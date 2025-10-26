@@ -1,0 +1,7 @@
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/main/java/com/firefly/idp/cognito/config/CognitoConfiguration.java
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/main/java/com/firefly/idp/cognito/service/CognitoAdminService.java
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/main/java/com/firefly/idp/cognito/util/CognitoSecretHashCalculator.java
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/main/java/com/firefly/idp/cognito/client/CognitoClientFactory.java
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/main/java/com/firefly/idp/cognito/properties/CognitoProperties.java
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/main/java/com/firefly/idp/cognito/service/CognitoUserService.java
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/main/java/com/firefly/idp/cognito/adapter/CognitoIdpAdapter.java
