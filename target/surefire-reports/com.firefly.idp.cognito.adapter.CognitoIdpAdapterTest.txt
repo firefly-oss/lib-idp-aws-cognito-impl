@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.firefly.idp.cognito.adapter.CognitoIdpAdapterTest
 -------------------------------------------------------------------------------
-Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.575 s -- in com.firefly.idp.cognito.adapter.CognitoIdpAdapterTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.571 s -- in com.firefly.idp.cognito.adapter.CognitoIdpAdapterTest
