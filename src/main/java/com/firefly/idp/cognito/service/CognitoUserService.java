@@ -58,7 +58,7 @@ public class CognitoUserService {
      * Authenticate user with username and password
      */
     public Mono<ResponseEntity<TokenResponse>> login(LoginRequest request) {
-        return Mono.fromCallable(() -> {
+        return Mono.<ResponseEntity<TokenResponse>>fromCallable(() -> {
             log.info("Initiating Cognito login for user: {}", request.getUsername());
             
             CognitoIdentityProviderClient client = clientFactory.getClient();
@@ -107,11 +107,11 @@ public class CognitoUserService {
             log.error("Cognito login failed for user: {}", request.getUsername(), exception);
             
             if (exception instanceof NotAuthorizedException) {
-                return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+                return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).<TokenResponse>build());
             } else if (exception instanceof UserNotFoundException) {
-                return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+                return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).<TokenResponse>build());
             } else {
-                return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<TokenResponse>build());
             }
         });
     }
@@ -238,14 +238,12 @@ public class CognitoUserService {
             
             UserInfoResponse userInfo = UserInfoResponse.builder()
                     .sub(attributes.getOrDefault("sub", getUserResponse.username()))
-                    .username(getUserResponse.username())
+                    .preferredUsername(getUserResponse.username())
                     .email(attributes.get("email"))
                     .emailVerified(Boolean.parseBoolean(attributes.getOrDefault("email_verified", "false")))
                     .givenName(attributes.get("given_name"))
                     .familyName(attributes.get("family_name"))
                     .name(attributes.get("name"))
-                    .phoneNumber(attributes.get("phone_number"))
-                    .phoneNumberVerified(Boolean.parseBoolean(attributes.getOrDefault("phone_number_verified", "false")))
                     .build();
             
             log.debug("Successfully fetched user info for: {}", getUserResponse.username());

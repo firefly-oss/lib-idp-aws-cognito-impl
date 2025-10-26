@@ -71,16 +71,16 @@ public class CognitoAdminService {
                         .value("true")
                         .build());
             }
-            if (request.getFirstName() != null) {
+            if (request.getGivenName() != null) {
                 attributes.add(AttributeType.builder()
                         .name("given_name")
-                        .value(request.getFirstName())
+                        .value(request.getGivenName())
                         .build());
             }
-            if (request.getLastName() != null) {
+            if (request.getFamilyName() != null) {
                 attributes.add(AttributeType.builder()
                         .name("family_name")
-                        .value(request.getLastName())
+                        .value(request.getFamilyName())
                         .build());
             }
             
@@ -106,7 +106,7 @@ public class CognitoAdminService {
             }
             
             CreateUserResponse userResponse = CreateUserResponse.builder()
-                    .userId(response.user().username())
+                    .id(response.user().username())
                     .username(response.user().username())
                     .email(request.getEmail())
                     .build();
@@ -125,21 +125,21 @@ public class CognitoAdminService {
      */
     public Mono<Void> changePassword(com.firefly.idp.dtos.ChangePasswordRequest request) {
         return Mono.fromRunnable(() -> {
-            log.info("Changing password for user: {}", request.getUsername());
+            log.info("Changing password for user: {}", request.getUserId());
             
             try {
                 CognitoIdentityProviderClient client = clientFactory.getClient();
                 
                 AdminSetUserPasswordRequest setPasswordRequest = AdminSetUserPasswordRequest.builder()
                         .userPoolId(properties.getUserPoolId())
-                        .username(request.getUsername())
+                        .username(request.getUserId())
                         .password(request.getNewPassword())
                         .permanent(true)
                         .build();
                 
                 client.adminSetUserPassword(setPasswordRequest);
                 
-                log.info("Successfully changed password for user: {}", request.getUsername());
+                log.info("Successfully changed password for user: {}", request.getUserId());
             } catch (Exception e) {
                 log.error("Failed to change password", e);
                 throw new RuntimeException("Password change failed", e);
@@ -183,7 +183,7 @@ public class CognitoAdminService {
             // This is a placeholder for custom MFA implementation
             MfaChallengeResponse response = MfaChallengeResponse.builder()
                     .challengeId(UUID.randomUUID().toString())
-                    .deliveryMedium("SMS")
+                    .deliveryMethod("SMS")
                     .build();
             
             return ResponseEntity.ok(response);
@@ -223,9 +223,7 @@ public class CognitoAdminService {
                     .map(device -> SessionInfo.builder()
                             .sessionId(device.deviceKey())
                             .userId(userId)
-                            .deviceName(device.deviceName())
-                            .lastAccessTime(device.deviceLastModifiedDate() != null ? 
-                                    device.deviceLastModifiedDate().toString() : null)
+                            .lastAccessAt(device.deviceLastModifiedDate())
                             .build())
                     .collect(Collectors.toList());
             
@@ -329,11 +327,11 @@ public class CognitoAdminService {
             if (request.getEmail() != null) {
                 attributes.add(AttributeType.builder().name("email").value(request.getEmail()).build());
             }
-            if (request.getFirstName() != null) {
-                attributes.add(AttributeType.builder().name("given_name").value(request.getFirstName()).build());
+            if (request.getGivenName() != null) {
+                attributes.add(AttributeType.builder().name("given_name").value(request.getGivenName()).build());
             }
-            if (request.getLastName() != null) {
-                attributes.add(AttributeType.builder().name("family_name").value(request.getLastName()).build());
+            if (request.getFamilyName() != null) {
+                attributes.add(AttributeType.builder().name("family_name").value(request.getFamilyName()).build());
             }
             
             AdminUpdateUserAttributesRequest updateRequest = AdminUpdateUserAttributesRequest.builder()
@@ -345,7 +343,7 @@ public class CognitoAdminService {
             client.adminUpdateUserAttributes(updateRequest);
             
             UpdateUserResponse response = UpdateUserResponse.builder()
-                    .userId(request.getUserId())
+                    .id(request.getUserId())
                     .username(request.getUserId())
                     .build();
             
@@ -385,7 +383,7 @@ public class CognitoAdminService {
             }
             
             CreateRolesResponse response = CreateRolesResponse.builder()
-                    .roleNames(createdRoles)
+                    .createdRoleNames(createdRoles)
                     .build();
             
             return ResponseEntity.ok(response);
@@ -401,12 +399,12 @@ public class CognitoAdminService {
      */
     public Mono<ResponseEntity<CreateScopeResponse>> createScope(CreateScopeRequest request) {
         return Mono.fromCallable(() -> {
-            log.info("Creating scope: {}", request.getScopeName());
+            log.info("Creating scope: {}", request.getName());
             
             // Cognito uses resource servers for scopes
             // This is a simplified placeholder
             CreateScopeResponse response = CreateScopeResponse.builder()
-                    .scopeName(request.getScopeName())
+                    .name(request.getName())
                     .build();
             
             return ResponseEntity.ok(response);

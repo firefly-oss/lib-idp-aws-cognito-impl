@@ -1,0 +1,7 @@
+com/firefly/idp/cognito/properties/CognitoProperties.class
+com/firefly/idp/cognito/util/CognitoSecretHashCalculator.class
+com/firefly/idp/cognito/adapter/CognitoIdpAdapter.class
+com/firefly/idp/cognito/client/CognitoClientFactory.class
+com/firefly/idp/cognito/config/CognitoConfiguration.class
+com/firefly/idp/cognito/service/CognitoAdminService.class
+com/firefly/idp/cognito/service/CognitoUserService.class
