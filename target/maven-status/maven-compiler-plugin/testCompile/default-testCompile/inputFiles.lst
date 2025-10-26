@@ -1,1 +1,2 @@
 /Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/test/java/com/firefly/idp/cognito/adapter/CognitoIdpAdapterTest.java
+/Users/ancongui/Development/firefly/lib-idp-aws-cognito-impl/src/test/java/com/firefly/idp/cognito/adapter/CognitoIdpAdapterLocalStackIT.java

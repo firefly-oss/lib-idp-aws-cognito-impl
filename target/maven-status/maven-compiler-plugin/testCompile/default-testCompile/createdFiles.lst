@@ -1,1 +1,3 @@
 com/firefly/idp/cognito/adapter/CognitoIdpAdapterTest.class
+com/firefly/idp/cognito/adapter/CognitoIdpAdapterLocalStackIT.class
+com/firefly/idp/cognito/adapter/CognitoIdpAdapterLocalStackIT$1.class

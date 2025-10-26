@@ -38,7 +38,6 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 import java.net.URI;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.testcontainers.containers.localstack.LocalStackContainer.Service.COGNITO;
 
 /**
  * Integration tests for CognitoIdpAdapter using LocalStack
@@ -64,7 +63,7 @@ class CognitoIdpAdapterLocalStackIT {
     @Container
     static LocalStackContainer localstack = new LocalStackContainer(
             DockerImageName.parse("localstack/localstack:3.0"))
-            .withServices(COGNITO);
+            .withServices(LocalStackContainer.Service.S3);  // Use S3 as Cognito not fully supported
 
     private static CognitoIdentityProviderClient cognitoClient;
     private static CognitoIdpAdapter adapter;
@@ -75,8 +74,9 @@ class CognitoIdpAdapterLocalStackIT {
     @BeforeAll
     static void setUp() {
         // Create Cognito client pointing to LocalStack
+        // Note: LocalStack may not have full Cognito support, configure endpoint manually
         cognitoClient = CognitoIdentityProviderClient.builder()
-                .endpointOverride(localstack.getEndpointOverride(COGNITO))
+                .endpointOverride(URI.create("http://localhost:4566"))  // Default LocalStack endpoint
                 .credentialsProvider(
                         StaticCredentialsProvider.create(
                                 AwsBasicCredentials.create(
@@ -92,7 +92,7 @@ class CognitoIdpAdapterLocalStackIT {
         CreateUserPoolResponse userPoolResponse = cognitoClient.createUserPool(
                 CreateUserPoolRequest.builder()
                         .poolName("test-pool")
-                        .autoVerifiedAttributes(AttributeType.EMAIL)
+                        .autoVerifiedAttributes(VerifiedAttributeType.EMAIL)
                         .policies(UserPoolPolicyType.builder()
                                 .passwordPolicy(PasswordPolicyType.builder()
                                         .minimumLength(8)
@@ -126,7 +126,6 @@ class CognitoIdpAdapterLocalStackIT {
         properties.setClientId(clientId);
 
         CognitoClientFactory clientFactory = new CognitoClientFactory(properties) {
-            @Override
             public CognitoIdentityProviderClient createCognitoClient() {
                 return cognitoClient;
             }
@@ -153,7 +152,7 @@ class CognitoIdpAdapterLocalStackIT {
                 .email(TEST_EMAIL)
                 .givenName("Test")
                 .familyName("User")
-                .temporaryPassword(TEST_PASSWORD)
+                .password(TEST_PASSWORD)  // Use password, not temporaryPassword
                 .build();
 
         StepVerifier.create(adapter.createUser(request))
@@ -174,7 +173,7 @@ class CognitoIdpAdapterLocalStackIT {
         LoginRequest request = LoginRequest.builder()
                 .username(TEST_USERNAME)
                 .password(TEST_PASSWORD)
-                .clientId(clientId)
+                .scope("openid profile email")
                 .build();
 
         StepVerifier.create(adapter.login(request))
@@ -216,7 +215,7 @@ class CognitoIdpAdapterLocalStackIT {
                 .assertNext(response -> {
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
                     assertThat(response.getBody()).isNotNull();
-                    assertThat(response.getBody().getRoleNames()).containsExactlyInAnyOrder("admin", "user");
+                    assertThat(response.getBody().getCreatedRoleNames()).containsExactlyInAnyOrder("admin", "user");
                 })
                 .verifyComplete();
     }
@@ -272,8 +271,8 @@ class CognitoIdpAdapterLocalStackIT {
     @DisplayName("Should change user password")
     @Disabled("LocalStack may not fully support password operations")
     void testChangePassword() {
-        ChangePasswordRequest request = ChangePasswordRequest.builder()
-                .username(TEST_USERNAME)
+        com.firefly.idp.dtos.ChangePasswordRequest request = com.firefly.idp.dtos.ChangePasswordRequest.builder()
+                .userId(TEST_USERNAME)
                 .oldPassword(TEST_PASSWORD)
                 .newPassword("NewTestPass123!")
                 .build();
@@ -312,7 +311,7 @@ class CognitoIdpAdapterLocalStackIT {
         LoginRequest request = LoginRequest.builder()
                 .username("nonexistent")
                 .password("wrongpassword")
-                .clientId(clientId)
+                .scope("openid")
                 .build();
 
         StepVerifier.create(adapter.login(request))
