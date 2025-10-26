@@ -219,26 +219,31 @@ mvn test
 - Fast execution, no flakiness
 - Test class: `CognitoIdpAdapterTest`
 
-**Integration Tests with LocalStack (Optional)**
+**Integration Tests with LocalStack PRO (Optional)**
 - Test against real LocalStack Cognito emulation
+- **Requires LocalStack PRO license** (free 14-day trial available)
 - Requires Docker running
-- Run with `mvn verify -Dgroups=integration` or remove `@Disabled` annotation
 - Test class: `CognitoIdpAdapterLocalStackIT`
 
-**To run LocalStack integration tests:**
+**To run LocalStack PRO integration tests:**
 
-1. Ensure Docker is running
-2. Remove or comment out the `@Disabled` annotation in `CognitoIdpAdapterLocalStackIT`
-3. Run:
+1. **Get LocalStack PRO auth token**: https://app.localstack.cloud/workspace/auth-tokens
+2. **Set environment variable**:
    ```bash
-   mvn verify -Dgroups=integration
+   export LOCALSTACK_AUTH_TOKEN="your-token-here"
+   ```
+3. **Remove the `@Disabled` annotation** in `CognitoIdpAdapterLocalStackIT`
+4. **Run tests**:
+   ```bash
+   mvn clean verify
    ```
 
-**LocalStack Limitations:**
-- Some Cognito operations may not be fully supported
-- Authentication flows (`USER_PASSWORD_AUTH`) have limited support
-- Token-based operations may not work as expected
-- Behavior may differ from real AWS Cognito
+📖 **Detailed setup guide**: See [LOCALSTACK_PRO_SETUP.md](LOCALSTACK_PRO_SETUP.md)
+
+**Note**: LocalStack Free version does NOT support Cognito (returns 501 error). You need:
+- LocalStack PRO license, OR
+- Test against real AWS Cognito, OR  
+- Use unit tests with mocks (default)
 
 **Why unit tests by default?**
 - Faster test execution (no container startup)

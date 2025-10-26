@@ -53,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("integration")
-@Disabled("Enable manually for LocalStack integration testing - requires Docker")
+@Disabled("Requires LocalStack PRO - Set LOCALSTACK_AUTH_TOKEN environment variable and remove @Disabled to run. See LOCALSTACK_PRO_SETUP.md")
 class CognitoIdpAdapterLocalStackIT {
 
     private static final String TEST_USERNAME = "testuser";
@@ -62,8 +62,10 @@ class CognitoIdpAdapterLocalStackIT {
 
     @Container
     static LocalStackContainer localstack = new LocalStackContainer(
-            DockerImageName.parse("localstack/localstack:3.0"))
-            .withServices(LocalStackContainer.Service.S3);  // Use S3 as Cognito not fully supported
+            DockerImageName.parse("localstack/localstack-pro:latest"))  // PRO version for Cognito support
+            .withEnv("LOCALSTACK_AUTH_TOKEN", System.getenv("LOCALSTACK_AUTH_TOKEN"))
+            .withEnv("DEBUG", "1")
+            .withServices(LocalStackContainer.Service.S3);  // S3 as placeholder, Cognito will be available
 
     private static CognitoIdentityProviderClient cognitoClient;
     private static CognitoIdpAdapter adapter;
@@ -73,10 +75,18 @@ class CognitoIdpAdapterLocalStackIT {
 
     @BeforeAll
     static void setUp() {
-        // Create Cognito client pointing to LocalStack
-        // Note: LocalStack may not have full Cognito support, configure endpoint manually
+        // Wait for LocalStack to be ready
+        localstack.start();
+        
+        // Create Cognito client pointing to LocalStack with dynamic endpoint
+        String endpoint = String.format("http://%s:%d", 
+            localstack.getHost(), 
+            localstack.getMappedPort(4566));
+        
+        System.out.println("LocalStack endpoint: " + endpoint);
+        
         cognitoClient = CognitoIdentityProviderClient.builder()
-                .endpointOverride(URI.create("http://localhost:4566"))  // Default LocalStack endpoint
+                .endpointOverride(URI.create(endpoint))
                 .credentialsProvider(
                         StaticCredentialsProvider.create(
                                 AwsBasicCredentials.create(
