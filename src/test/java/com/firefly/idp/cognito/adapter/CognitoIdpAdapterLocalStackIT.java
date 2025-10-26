@@ -53,7 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("integration")
-@Disabled("Requires LocalStack PRO - Set LOCALSTACK_AUTH_TOKEN environment variable and remove @Disabled to run. See LOCALSTACK_PRO_SETUP.md")
+@Disabled("Requires LocalStack PRO - Set LOCALSTACK_AUTH_TOKEN and remove @Disabled. Note: Some operations may have limitations in LocalStack. See LOCALSTACK_PRO_SETUP.md")
 class CognitoIdpAdapterLocalStackIT {
 
     private static final String TEST_USERNAME = "testuser";
@@ -65,7 +65,8 @@ class CognitoIdpAdapterLocalStackIT {
             DockerImageName.parse("localstack/localstack-pro:latest"))  // PRO version for Cognito support
             .withEnv("LOCALSTACK_AUTH_TOKEN", System.getenv("LOCALSTACK_AUTH_TOKEN"))
             .withEnv("DEBUG", "1")
-            .withServices(LocalStackContainer.Service.S3);  // S3 as placeholder, Cognito will be available
+            .withEnv("SERVICES", "cognito-idp")  // Explicitly enable Cognito IDP service
+            .withEnv("EAGER_SERVICE_LOADING", "1");  // Load services eagerly
 
     private static CognitoIdentityProviderClient cognitoClient;
     private static CognitoIdpAdapter adapter;
