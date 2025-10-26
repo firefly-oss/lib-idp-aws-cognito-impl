@@ -211,17 +211,40 @@ mvn test
 ```
 
 ### Testing Strategy
-- **No LocalStack in unit tests**: We use pure mocking to avoid dependencies on external services
-- **Integration tests**: Should be run in a separate test suite with real AWS Cognito or LocalStack (optional dependencies are included in pom.xml but not used by default)
-- **Test coverage**: Focuses on business logic, error handling, and response mapping
 
-**Why no LocalStack by default?**
-- Faster test execution
+**Unit Tests (Default)**
+- Use **Mockito** to mock AWS SDK clients
+- No external dependencies (LocalStack, Docker, or AWS)
+- Run with `mvn test`
+- Fast execution, no flakiness
+- Test class: `CognitoIdpAdapterTest`
+
+**Integration Tests with LocalStack (Optional)**
+- Test against real LocalStack Cognito emulation
+- Requires Docker running
+- Run with `mvn verify -Dgroups=integration` or remove `@Disabled` annotation
+- Test class: `CognitoIdpAdapterLocalStackIT`
+
+**To run LocalStack integration tests:**
+
+1. Ensure Docker is running
+2. Remove or comment out the `@Disabled` annotation in `CognitoIdpAdapterLocalStackIT`
+3. Run:
+   ```bash
+   mvn verify -Dgroups=integration
+   ```
+
+**LocalStack Limitations:**
+- Some Cognito operations may not be fully supported
+- Authentication flows (`USER_PASSWORD_AUTH`) have limited support
+- Token-based operations may not work as expected
+- Behavior may differ from real AWS Cognito
+
+**Why unit tests by default?**
+- Faster test execution (no container startup)
 - No Docker/Testcontainers dependencies
-- Consistent test results without external service flakiness
-- LocalStack support for Cognito has limitations
-
-For integration testing with real AWS Cognito or LocalStack, create a separate test profile and add appropriate annotations.
+- Consistent test results
+- Better for CI/CD pipelines
 
 ## Integration with Security Center
 This adapter is automatically loaded by the Security Center when:
