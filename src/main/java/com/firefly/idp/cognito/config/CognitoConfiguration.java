@@ -19,6 +19,7 @@ package com.firefly.idp.cognito.config;
 import com.firefly.idp.cognito.properties.CognitoProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
@@ -38,6 +39,22 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 public class CognitoConfiguration {
 
+    @Bean
+    public com.firefly.idp.cognito.client.CognitoClientFactory cognitoClientFactory(CognitoProperties properties) {
+        log.info("Configuring AWS Cognito Client Factory for region: {}", properties.getRegion());
+        
+        com.firefly.idp.cognito.client.CognitoClientFactory factory = 
+                new com.firefly.idp.cognito.client.CognitoClientFactory(properties);
+        
+        // Configure endpoint override if provided (for LocalStack testing)
+        if (properties.getEndpointOverride() != null && !properties.getEndpointOverride().isEmpty()) {
+            log.info("Configuring Cognito client with endpoint override: {}", properties.getEndpointOverride());
+            factory.setEndpointOverride(java.net.URI.create(properties.getEndpointOverride()));
+        }
+        
+        return factory;
+    }
+    
     public CognitoConfiguration() {
         log.info("AWS Cognito IDP Adapter Configuration loaded");
     }

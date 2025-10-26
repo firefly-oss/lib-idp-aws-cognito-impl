@@ -74,6 +74,11 @@ public class CognitoProperties {
     private String domain;
 
     /**
+     * Custom endpoint override (for LocalStack testing)
+     */
+    private String endpointOverride;
+
+    /**
      * Connection timeout in milliseconds
      */
     private Integer connectionTimeout = 30000;
