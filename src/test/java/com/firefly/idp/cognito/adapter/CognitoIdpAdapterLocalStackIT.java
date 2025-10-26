@@ -21,6 +21,7 @@ import com.firefly.idp.cognito.properties.CognitoProperties;
 import com.firefly.idp.cognito.service.CognitoAdminService;
 import com.firefly.idp.cognito.service.CognitoUserService;
 import com.firefly.idp.dtos.*;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -50,10 +51,38 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - Behavior may differ slightly from AWS Cognito
  * - Tests marked as {@code @Disabled} are known to have issues with LocalStack
  */
+/**
+ * Integration tests for CognitoIdpAdapter using LocalStack PRO.
+ * 
+ * <p><strong>DISABLED BY DEFAULT</strong> - These tests require LocalStack PRO with a valid auth token.
+ * 
+ * <p>To enable these tests:
+ * <ol>
+ *   <li>Get a LocalStack PRO auth token from https://app.localstack.cloud</li>
+ *   <li>Set environment variable: {@code export LOCALSTACK_AUTH_TOKEN="your-token"}</li>
+ *   <li>Remove or comment out the {@code @Disabled} annotation below</li>
+ *   <li>Run: {@code mvn verify -Dit.test=CognitoIdpAdapterLocalStackIT}</li>
+ * </ol>
+ * 
+ * <p>See {@code LOCALSTACK_PRO_SETUP.md} for detailed setup instructions.
+ * 
+ * <p><strong>Test Coverage</strong>:
+ * <ul>
+ *   <li>✅ User Management (create, update, delete)</li>
+ *   <li>✅ Authentication (login, getUserInfo, changePassword)</li>
+ *   <li>✅ Error Handling (user not found, wrong password)</li>
+ *   <li>✅ Role Management (create, assign, get, remove)</li>
+ * </ul>
+ * 
+ * @see LOCALSTACK_PRO_SETUP.md
+ * @see LOCALSTACK_TEST_RESULTS.md
+ */
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag("integration")
-@Disabled("Requires LocalStack PRO - Set LOCALSTACK_AUTH_TOKEN and remove @Disabled. Note: Some operations may have limitations in LocalStack. See LOCALSTACK_PRO_SETUP.md")
+@Tag("localstack")
+@Slf4j
+@Disabled("LocalStack PRO tests - Enable manually after setting LOCALSTACK_AUTH_TOKEN. See LOCALSTACK_PRO_SETUP.md")
 class CognitoIdpAdapterLocalStackIT {
 
     private static final String TEST_USERNAME = "testuser";
@@ -73,6 +102,7 @@ class CognitoIdpAdapterLocalStackIT {
     private static String userPoolId;
     private static String clientId;
     private static String testUserId;
+    private static String testAccessToken;  // Store access token for getUserInfo test
 
     @BeforeAll
     static void setUp() {
@@ -136,11 +166,17 @@ class CognitoIdpAdapterLocalStackIT {
         properties.setUserPoolId(userPoolId);
         properties.setClientId(clientId);
 
-        CognitoClientFactory clientFactory = new CognitoClientFactory(properties) {
-            public CognitoIdentityProviderClient createCognitoClient() {
-                return cognitoClient;
-            }
-        };
+        // Create factory and configure for LocalStack
+        CognitoClientFactory clientFactory = new CognitoClientFactory(properties);
+        clientFactory.setEndpointOverride(URI.create(endpoint));
+        clientFactory.setCredentialsProvider(
+                StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(
+                                localstack.getAccessKey(),
+                                localstack.getSecretKey()
+                        )
+                )
+        );
 
         CognitoUserService userService = new CognitoUserService(clientFactory, properties);
         CognitoAdminService adminService = new CognitoAdminService(clientFactory, properties);
@@ -174,12 +210,28 @@ class CognitoIdpAdapterLocalStackIT {
                     testUserId = response.getBody().getId();
                 })
                 .verifyComplete();
+        
+        // Set permanent password for the user to enable login
+        // AdminCreateUser creates user with FORCE_CHANGE_PASSWORD status
+        // We need to set a permanent password
+        try {
+            cognitoClient.adminSetUserPassword(
+                AdminSetUserPasswordRequest.builder()
+                    .userPoolId(userPoolId)
+                    .username(TEST_USERNAME)
+                    .password(TEST_PASSWORD)
+                    .permanent(true)  // Set as permanent password
+                    .build()
+            );
+            log.info("Set permanent password for test user");
+        } catch (Exception e) {
+            log.warn("Could not set permanent password (may not be needed): {}", e.getMessage());
+        }
     }
 
     @Test
     @Order(2)
     @DisplayName("Should authenticate user with password")
-    @Disabled("LocalStack Cognito may not fully support USER_PASSWORD_AUTH flow")
     void testLogin() {
         LoginRequest request = LoginRequest.builder()
                 .username(TEST_USERNAME)
@@ -193,6 +245,8 @@ class CognitoIdpAdapterLocalStackIT {
                     assertThat(response.getBody()).isNotNull();
                     assertThat(response.getBody().getAccessToken()).isNotEmpty();
                     assertThat(response.getBody().getRefreshToken()).isNotEmpty();
+                    // Store access token for getUserInfo test
+                    testAccessToken = response.getBody().getAccessToken();
                 })
                 .verifyComplete();
     }
@@ -200,12 +254,11 @@ class CognitoIdpAdapterLocalStackIT {
     @Test
     @Order(3)
     @DisplayName("Should get user info")
-    @Disabled("Requires valid access token from LocalStack")
     void testGetUserInfo() {
-        // This test requires a valid access token which is hard to obtain from LocalStack
-        String mockAccessToken = "mock-token";
+        // Use access token from login test
+        assertThat(testAccessToken).isNotNull();
 
-        StepVerifier.create(adapter.getUserInfo(mockAccessToken))
+        StepVerifier.create(adapter.getUserInfo(testAccessToken))
                 .assertNext(response -> {
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
                     assertThat(response.getBody()).isNotNull();
@@ -280,7 +333,6 @@ class CognitoIdpAdapterLocalStackIT {
     @Test
     @Order(8)
     @DisplayName("Should change user password")
-    @Disabled("LocalStack may not fully support password operations")
     void testChangePassword() {
         com.firefly.idp.dtos.ChangePasswordRequest request = com.firefly.idp.dtos.ChangePasswordRequest.builder()
                 .userId(TEST_USERNAME)
@@ -316,17 +368,73 @@ class CognitoIdpAdapterLocalStackIT {
     }
 
     @Test
-    @DisplayName("Should handle authentication failure")
-    @Disabled("LocalStack authentication flow limitations")
-    void testLoginFailure() {
+    @Order(11)
+    @DisplayName("Should handle authentication failure for non-existent user")
+    void testLoginFailureUserNotFound() {
         LoginRequest request = LoginRequest.builder()
-                .username("nonexistent")
-                .password("wrongpassword")
+                .username("nonexistent-user-12345")
+                .password("anypassword")
                 .scope("openid")
                 .build();
 
         StepVerifier.create(adapter.login(request))
-                .expectError()
-                .verify();
+                .assertNext(response -> {
+                    // User doesn't exist - should return 404 NOT_FOUND
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(response.getBody()).isNull();
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("Should handle authentication failure for wrong password")
+    void testLoginFailureWrongPassword() {
+        // First create a test user for this specific test
+        String wrongPasswordUser = "wrongpasswordtest";
+        CreateUserRequest createRequest = CreateUserRequest.builder()
+                .username(wrongPasswordUser)
+                .email("wrongpass@example.com")
+                .givenName("Wrong")
+                .familyName("Password")
+                .password(TEST_PASSWORD)
+                .build();
+
+        StepVerifier.create(adapter.createUser(createRequest))
+                .assertNext(response -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK))
+                .verifyComplete();
+
+        // Set permanent password
+        try {
+            cognitoClient.adminSetUserPassword(
+                AdminSetUserPasswordRequest.builder()
+                    .userPoolId(userPoolId)
+                    .username(wrongPasswordUser)
+                    .password(TEST_PASSWORD)
+                    .permanent(true)
+                    .build()
+            );
+        } catch (Exception e) {
+            log.warn("Could not set permanent password: {}", e.getMessage());
+        }
+
+        // Now try to login with wrong password
+        LoginRequest loginRequest = LoginRequest.builder()
+                .username(wrongPasswordUser)
+                .password("WrongPassword123!")
+                .scope("openid")
+                .build();
+
+        StepVerifier.create(adapter.login(loginRequest))
+                .assertNext(response -> {
+                    // Wrong password - should return 401 UNAUTHORIZED
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+                    assertThat(response.getBody()).isNull();
+                })
+                .verifyComplete();
+
+        // Clean up - delete the test user
+        StepVerifier.create(adapter.deleteUser(wrongPasswordUser))
+                .verifyComplete();
     }
 }

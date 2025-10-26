@@ -20,10 +20,15 @@ import com.firefly.idp.cognito.properties.CognitoProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClientBuilder;
 
 import jakarta.annotation.PreDestroy;
+import java.net.URI;
 import java.time.Duration;
 
 /**
@@ -39,6 +44,26 @@ public class CognitoClientFactory {
 
     private final CognitoProperties properties;
     private volatile CognitoIdentityProviderClient client;
+    private URI endpointOverride;
+    private AwsCredentialsProvider credentialsProvider;
+
+    /**
+     * Set custom endpoint override (for LocalStack testing)
+     *
+     * @param endpointOverride Custom endpoint URI
+     */
+    public void setEndpointOverride(URI endpointOverride) {
+        this.endpointOverride = endpointOverride;
+    }
+
+    /**
+     * Set custom credentials provider (for LocalStack testing)
+     *
+     * @param credentialsProvider Custom credentials provider
+     */
+    public void setCredentialsProvider(AwsCredentialsProvider credentialsProvider) {
+        this.credentialsProvider = credentialsProvider;
+    }
 
     /**
      * Get or create the Cognito Identity Provider client
@@ -49,17 +74,40 @@ public class CognitoClientFactory {
         if (client == null) {
             synchronized (this) {
                 if (client == null) {
-                    log.info("Initializing AWS Cognito client for region: {}", properties.getRegion());
-                    client = CognitoIdentityProviderClient.builder()
-                            .region(Region.of(properties.getRegion()))
-                            .overrideConfiguration(config -> config
-                                    .apiCallTimeout(Duration.ofMillis(properties.getRequestTimeout()))
-                                    .apiCallAttemptTimeout(Duration.ofMillis(properties.getConnectionTimeout())))
-                            .build();
+                    client = createClient();
                 }
             }
         }
         return client;
+    }
+
+    /**
+     * Create a new Cognito Identity Provider client
+     * 
+     * @return Configured CognitoIdentityProviderClient
+     */
+    protected CognitoIdentityProviderClient createClient() {
+        log.info("Initializing AWS Cognito client for region: {}", properties.getRegion());
+        
+        CognitoIdentityProviderClientBuilder builder = CognitoIdentityProviderClient.builder()
+                .region(Region.of(properties.getRegion()))
+                .overrideConfiguration(config -> config
+                        .apiCallTimeout(Duration.ofMillis(properties.getRequestTimeout()))
+                        .apiCallAttemptTimeout(Duration.ofMillis(properties.getConnectionTimeout())));
+        
+        // Apply endpoint override if set (for LocalStack)
+        if (endpointOverride != null) {
+            log.info("Using custom endpoint: {}", endpointOverride);
+            builder.endpointOverride(endpointOverride);
+        }
+        
+        // Apply custom credentials provider if set (for LocalStack)
+        if (credentialsProvider != null) {
+            log.info("Using custom credentials provider");
+            builder.credentialsProvider(credentialsProvider);
+        }
+        
+        return builder.build();
     }
 
     /**

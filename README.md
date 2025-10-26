@@ -238,7 +238,15 @@ mvn test
    mvn clean verify
    ```
 
-📖 **Detailed setup guide**: See [LOCALSTACK_PRO_SETUP.md](LOCALSTACK_PRO_SETUP.md)
+📖 **Detailed setup guide**: See [LOCALSTACK_PRO_SETUP.md](LOCALSTACK_PRO_SETUP.md)  
+📊 **Test results**: See [LOCALSTACK_TEST_RESULTS.md](LOCALSTACK_TEST_RESULTS.md)
+
+**LocalStack PRO Test Coverage** (when enabled):
+- ✅ 12 integration tests covering all operations
+- ✅ Authentication flows (login, getUserInfo, changePassword)
+- ✅ User management (create, update, delete)
+- ✅ Role management (create, assign, get, remove)
+- ✅ Error handling (404, 401 responses)
 
 **Note**: LocalStack Free version does NOT support Cognito (returns 501 error). You need:
 - LocalStack PRO license, OR
