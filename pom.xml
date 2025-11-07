@@ -20,7 +20,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <lib-idp-adapter.version>1.0.0-SNAPSHOT</lib-idp-adapter.version>
+        <lib-idp.version>1.0.0-SNAPSHOT</lib-idp.version>
         <aws.sdk.version>2.20.26</aws.sdk.version>
     </properties>
 
@@ -28,8 +28,8 @@
         <!-- Firefly IDP Adapter Interface -->
         <dependency>
             <groupId>com.firefly</groupId>
-            <artifactId>lib-idp-adapter</artifactId>
-            <version>${lib-idp-adapter.version}</version>
+            <artifactId>lib-idp</artifactId>
+            <version>${lib-idp.version}</version>
         </dependency>
 
         <!-- AWS SDK for Cognito -->
